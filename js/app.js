@@ -5,9 +5,16 @@ const evmChains = window.evmChains;
 
 let web3Modal;
 let provider;
+let web3;
 let selectedAccount;
 let contracts = {};
-let contractAddress = {};
+let Address = {};
+
+function ifConnected() {
+  if (provider == null) {
+    alert("Please connect wallet");
+  }
+}
 
 function init() {
   console.log("Initializing example");
@@ -77,22 +84,45 @@ async function initContract() {
     contracts.PolicyToken = TruffleContract(data);
     contracts.PolicyToken.setProvider(provider);
   });
+  $.getJSON("../abis/LPToken.json", function (data) {
+    contracts.LPToken = TruffleContract(data);
+    contracts.LPToken.setProvider(provider);
+  });
+  $.getJSON("../abis/MockUSD.json", function (data) {
+    contracts.MockUSD = TruffleContract(data);
+    contracts.MockUSD.setProvider(provider);
+  });
 }
 
 async function initContractAddress() {
   $.getJSON("../address.json", function (data) {
-    contractAddress.DegisToken = data.DegisToken;
-    console.log("address ss", data.DegisToken);
+    Address.DegisToken = data.DegisToken;
+    console.log("degistoken address is", data.DegisToken);
+
+    Address.LPToken = data.LPToken;
+    Address.MockUSD = data.MockUSD;
+    Address.InsurancePool = data.InsurancePool;
+    Address.PolicyFlow = data.PolicyFlow;
+    Address.PolicyToken = data.PolicyToken;
+    Address.LinkTokenInterface = data.LinkTokenInterface;
+    Address.EmergencyPool = data.EmergencyPool;
+    Address.GetRandomness = data.GetRandomness;
   });
 }
 
 function bindEvents() {
   $(document).on("click", ".btn-passMinter", passMinter);
+  $(document).on("click", ".btn-faucet", Faucet);
+  $(document).on("click", ".btn-checkusd", CheckUSDBalance);
+  $(document).on("click", ".btn-stake", Stake);
+  $(document).on("click", ".btn-unstake", Unstake);
+  $(document).on("click", ".btn-poolinfo", GetPoolInfo);
+  $(document).on("click", ".btn-updatePolicyFlow", UpdatePolicyFlow);
 }
 
 async function fetchAccountData() {
   // Get a Web3 instance for the wallet
-  const web3 = new Web3(provider);
+  // const web3 = new Web3(provider);
 
   console.log("Web3 instance is", web3);
 
@@ -183,7 +213,7 @@ async function onConnect() {
   });
 
   document.querySelector("#nomessage").style.display = "none";
-
+  web3 = new Web3(provider);
   await refreshAccountData();
   await initContract();
   await initContractAddress();
@@ -213,9 +243,190 @@ async function onDisconnect() {
 }
 
 async function passMinter() {
-  const degis = await contracts.DegisToken.at(contractAddress.DegisToken);
-  const balance = await degis.balanceOf(selectedAccount);
-  console.log("user balance:", parseInt(balance) / 10 ** 18);
+  ifConnected();
+  const degis = await contracts.DegisToken.at(Address.DegisToken);
+  const degis_balance = await degis.balanceOf(selectedAccount);
+  console.log("user Degis balance:", parseInt(degis_balance) / 10 ** 18);
+
+  const lptoken = await contracts.LPToken.at(Address.LPToken);
+  console.log("LP Token address:", lptoken.address);
+
+  const minter1 = await degis.minter.call();
+  const minter2 = await lptoken.minter.call();
+  if (minter1 == Address.InsurancePool && minter2 == Address.InsurancePool) {
+    alert("The minter addrress has already been set!");
+  } else {
+    const minter_d = await degis.passMinterRole(Address.InsurancePool, {
+      from: selectedAccount,
+    });
+    console.log("New Degis Minter Address:", minter_d.logs[0].args[1]);
+    const minter_l = await lptoken.passMinterRole(Address.InsurancePool, {
+      from: selectedAccount,
+    });
+    console.log("New LPToken Minter Address:", minter_l.logs[0].args[1]);
+  }
+}
+
+async function UpdatePolicyFlow() {
+  ifConnected();
+
+  const PolicyToken = await contracts.PolicyToken.at(Address.PolicyToken);
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+
+  const tx1 = await InsurancePool.setPolicyFlow(Address.PolicyFlow, {
+    from: selectedAccount,
+  });
+  console.log("Tx Hash:", tx1.tx);
+
+  const pf_add = await InsurancePool.policyFlow.call({ from: selectedAccount });
+  console.log("Policy flow in the pool:", pf_add);
+
+  const tx2 = await PolicyToken.updatePolicyFlow(Address.PolicyFlow, {
+    from: selectedAccount,
+  });
+  console.log(tx2.tx);
+}
+
+async function CheckUSDBalance() {
+  ifConnected();
+  const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
+  console.log("MockUSD Address:", MockUSD.address);
+
+  let usd_balance = await MockUSD.balanceOf(selectedAccount);
+  document.getElementById("usdbalance").innerText += usd_balance / 10 ** 18;
+}
+
+async function Faucet() {
+  ifConnected();
+  const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
+  console.log("MockUSD Address:", MockUSD.address);
+  let faucet_number = document.getElementById("faucet_amount").value;
+  if (faucet_number == 0) {
+    alert("please type in your amount");
+  } else {
+    faucet_number = web3.utils.toWei(faucet_number, "ether");
+    console.log("Faucet Number:", faucet_number);
+
+    const tx = await MockUSD.mint(selectedAccount, faucet_number, {
+      from: selectedAccount,
+    });
+    console.log(tx.tx);
+  }
+}
+
+async function Stake() {
+  ifConnected();
+
+  const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
+  console.log("MockUSD Address:", MockUSD.address);
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+  console.log("InsurancePoll Address:", InsurancePool.address);
+
+  deposit_amount = document.getElementById("stake_amount").value;
+  f_amount = web3.utils.toWei(deposit_amount, "ether");
+
+  const tx1 = await MockUSD.approve(
+    Address.InsurancePool,
+    web3.utils.toBN(f_amount),
+    {
+      from: selectedAccount,
+    }
+  );
+  console.log("Tx Hash:", tx1.tx);
+
+  const tx2 = await InsurancePool.stake(
+    selectedAccount,
+    web3.utils.toBN(f_amount),
+    {
+      from: App.account,
+    }
+  );
+  console.log("Tx Hash:", tx2.tx);
+}
+
+async function Unstake() {
+  ifConnected();
+
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+  console.log("InsurancePoll Address:", InsurancePool.address);
+
+  deposit_amount = document.getElementById("stake_number").value;
+  f_amount = web3.utils.toWei(deposit_amount, "ether");
+
+  const tx = await InsurancePool.unstake(
+    selectedAccount,
+    web3.utils.toBN(f_amount),
+    {
+      from: selectedAccount,
+    }
+  );
+  console.log("Tx Hash:", tx.tx);
+}
+
+async function GetPoolInfo() {
+  ifConnected();
+
+  const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+  console.log("InsurancePool address:", InsurancePool.address);
+
+  let poolinfo = document.getElementById("poolinfo");
+
+  await InsurancePool.getPoolName({ from: selectedAccount }).then((value) =>
+    console.log("Pool name:", value)
+  );
+
+  await InsurancePool.getCurrentStakingBalance({ from: selectedAccount }).then(
+    (value) => {
+      console.log(
+        "Current Staking Balance in the pool:",
+        parseInt(value) / 10 ** 18
+      );
+      poolinfo.innerText += "Current Staking Value:" + value / 10 ** 18 + "\n";
+    }
+  );
+
+  await InsurancePool.getAvailableCapacity({ from: selectedAccount }).then(
+    (value) => {
+      console.log(
+        "Available capacity in the pool:",
+        parseInt(value) / 10 ** 18
+      );
+      poolinfo.innerText += "Available Capacity:" + value / 10 ** 18 + "\n";
+    }
+  );
+
+  await InsurancePool.getTotalLocked({ from: selectedAccount }).then(
+    (value) => {
+      console.log(
+        "Total locked amount in the pool:",
+        parseInt(value) / 10 ** 18
+      );
+      poolinfo.innerText += "Total Locked:" + value / 10 ** 18 + "\n";
+    }
+  );
+
+  await InsurancePool.getLockedRatio({ from: selectedAccount }).then((value) =>
+    console.log("PRB locked Ratio:", parseInt(value) / 10 ** 18)
+  );
+
+  await MockUSD.balanceOf(Address.InsurancePool, {
+    from: selectedAccount,
+  }).then((value) =>
+    console.log("Total USDC balance in the pool:", parseInt(value) / 10 ** 18)
+  );
+
+  await MockUSD.allowance(selectedAccount, Address.InsurancePool, {
+    from: App.account,
+  }).then((value) =>
+    console.log("USDC allowance of the pool:", parseInt(value) / 10 ** 18)
+  );
+
+  const reward_collected = await InsurancePool.getRewardCollected();
+  console.log("reward collected:", parseInt(reward_collected) / 10 ** 18);
+
+  const pf_add = await InsurancePool.policyFlow.call();
+  console.log("policy flow in the pool:", pf_add);
 }
 
 window.addEventListener("load", async () => {

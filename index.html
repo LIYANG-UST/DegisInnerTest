@@ -115,7 +115,7 @@
             >
           </div>
           <button type="button" class="btn btn-primary btn-passMinter">
-            Press to pass minter role
+            Pass Minter Role
           </button>
         </div>
       </div>
@@ -123,11 +123,32 @@
         <!-- <h5 class="card-header">Update PolicyFlow Address</h5> -->
         <div class="card-body">
           <button type="button" class="btn btn-primary btn-updatePolicyFlow">
-            Update PolicyFlow Address for InsurancePool and PolicyToken
+            Update PolicyFlow Address
           </button>
           <button type="button" class="btn btn-primary btn-mintNFT">
             Mint NFT Token Test
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MockUSD Faucet Part -->
+    <div class="container" id="faucet" style="margin-bottom: 20px">
+      <div class="card">
+        <div class="card-header">MockUSD Faucet</div>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="faucet_number">Get some MockUSD for test</label>
+            <input class="form-control" type="text" id="faucet_amount" />
+            <small class="form-text text-muted">Decimals:18</small>
+          </div>
+          <button type="button" class="btn btn-primary btn-faucet">
+            Press to Get USD
+          </button>
+          <button type="button" class="btn btn-primary btn-checkusd">
+            Check Your MockUSD Balance
+          </button>
+          <p id="usdbalance" style="margin-top: 15px">Your MockUSD Balance:</p>
         </div>
       </div>
     </div>
@@ -139,18 +160,27 @@
         <div class="card-body">
           <form>
             <div class="form-group">
-              <label for="stake_number">Your staking/unstaking amount</label>
+              <label for="stake_amount">Your staking/unstaking amount</label>
               <input class="form-control" type="text" id="stake_amount" />
-              <small class="form-text text-muted">Decimals:18</small>
+              <small class="form-text text-muted"
+                >Decimals:18; Remember, staking will have two
+                transactions!</small
+              >
             </div>
 
             <button type="button" class="btn btn-primary btn-stake">
-              Press to stake
+              Press to Stake
             </button>
             <button type="button" class="btn btn-primary btn-unstake">
-              Press to unstake
+              Press to Unstake
+            </button>
+            <button type="button" class="btn btn-primary btn-poolinfo">
+              Get Pool Info
             </button>
           </form>
+          <div style="margin-top: 10px">
+            <p id="poolinfo">Pool Info</p>
+          </div>
         </div>
       </div>
     </div>
@@ -194,6 +224,30 @@
               Press to buy
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settlement Part -->
+    <div class="container" id="oraclePart" style="margin-bottom: 20px">
+      <div class="card">
+        <div class="card-header">Settlement Part</div>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="fightNumber">Flight Number</label>
+            <input class="form-control" type="text" id="flightNumber" />
+          </div>
+          <div class="form-group">
+            <label for="policyOrder">Policy Order</label>
+            <input class="form-control" type="text" id="policyOrder" />
+          </div>
+          <div class="form-group">
+            <label for="date">Timestamp</label>
+            <input class="form-control" type="text" id="date" />
+          </div>
+          <button type="button" class="btn btn-primary btn-oracle">
+            Press to Request Oracle
+          </button>
         </div>
       </div>
     </div>
