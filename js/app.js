@@ -113,11 +113,13 @@ async function initContractAddress() {
 function bindEvents() {
   $(document).on("click", ".btn-passMinter", passMinter);
   $(document).on("click", ".btn-faucet", Faucet);
+  $(document).on("click", ".btn-mintNFT", MintNFT);
   $(document).on("click", ".btn-checkusd", CheckUSDBalance);
   $(document).on("click", ".btn-stake", Stake);
   $(document).on("click", ".btn-unstake", Unstake);
   $(document).on("click", ".btn-poolinfo", GetPoolInfo);
   $(document).on("click", ".btn-updatePolicyFlow", UpdatePolicyFlow);
+  $(document).on("click", ".btn-newpolicy", NewPolicy);
 }
 
 async function fetchAccountData() {
@@ -338,7 +340,7 @@ async function Stake() {
     selectedAccount,
     web3.utils.toBN(f_amount),
     {
-      from: App.account,
+      from: selectedAccount,
     }
   );
   console.log("Tx Hash:", tx2.tx);
@@ -371,6 +373,7 @@ async function GetPoolInfo() {
   console.log("InsurancePool address:", InsurancePool.address);
 
   let poolinfo = document.getElementById("poolinfo");
+  poolinfo.innerText = "Pool Info";
 
   await InsurancePool.getPoolName({ from: selectedAccount }).then((value) =>
     console.log("Pool name:", value)
@@ -382,7 +385,8 @@ async function GetPoolInfo() {
         "Current Staking Balance in the pool:",
         parseInt(value) / 10 ** 18
       );
-      poolinfo.innerText += "Current Staking Value:" + value / 10 ** 18 + "\n";
+      poolinfo.innerText +=
+        "\nCurrent Staking Value: " + value / 10 ** 18 + "\n";
     }
   );
 
@@ -392,7 +396,7 @@ async function GetPoolInfo() {
         "Available capacity in the pool:",
         parseInt(value) / 10 ** 18
       );
-      poolinfo.innerText += "Available Capacity:" + value / 10 ** 18 + "\n";
+      poolinfo.innerText += "Available Capacity: " + value / 10 ** 18 + "\n";
     }
   );
 
@@ -402,7 +406,7 @@ async function GetPoolInfo() {
         "Total locked amount in the pool:",
         parseInt(value) / 10 ** 18
       );
-      poolinfo.innerText += "Total Locked:" + value / 10 ** 18 + "\n";
+      poolinfo.innerText += "Total Locked: " + value / 10 ** 18 + "\n";
     }
   );
 
@@ -427,6 +431,75 @@ async function GetPoolInfo() {
 
   const pf_add = await InsurancePool.policyFlow.call();
   console.log("policy flow in the pool:", pf_add);
+}
+
+async function MintNFT() {
+  const PolicyToken = await contracts.PolicyToken.at(Address.PolicyToken);
+  const tx = await PolicyToken.mintPolicyToken(selectedAccount, {
+    from: selectedAccount,
+  });
+  console.log("Tx Hash:", tx.tx);
+}
+
+async function NewPolicy() {
+  ifConnected();
+
+  const PolicyFlow = await contracts.PolicyFlow.at(Address.PolicyFlow);
+  const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
+
+  let premium = web3.utils.toWei(
+    document.getElementById("premium").value,
+    "ether"
+  );
+  let payoff = web3.utils.toWei(
+    document.getElementById("payoff").value,
+    "ether"
+  );
+  let timestamp = new Date().getTime();
+
+  timestamp1 = timestamp + 86400 + 100; // 买24小时后的航班
+  timestamp2 = timestamp1 + 300; // 飞行时间5min
+  console.log("departure timestamp:", timestamp1);
+  console.log("departure time:", timestampToTime(timestamp1));
+
+  const tx1 = await MockUSD.approve(
+    Address.InsurancePool,
+    web3.utils.toBN(premium),
+    {
+      from: selectedAccount,
+    }
+  );
+  console.log("Tx Hash:", tx1.tx);
+
+  const tx2 = await PolicyFlow.newApplication(
+    selectedAccount,
+    0,
+    web3.utils.toBN(premium),
+    web3.utils.toBN(payoff),
+    timestamp1,
+    timestamp2,
+    { from: selectedAccount }
+  );
+  console.log("Tx Hash:", tx2.tx);
+  console.log(tx2);
+  console.log("policy Id:", tx2.logs[0].args[0]);
+}
+
+function timestampToTime(timestamp) {
+  let date = new Date(timestamp);
+  Y = date.getFullYear() + "-";
+  M =
+    (date.getMonth() + 1 < 10
+      ? "0" + (date.getMonth() + 1)
+      : date.getMonth() + 1) + "-";
+  (D = (date.getDate() < 10 ? "0" + date.getDate() : date.getDate()) + " "),
+    (h =
+      (date.getHours() < 10 ? "0" + date.getHours() : date.getHours()) + ":");
+  m =
+    (date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()) +
+    ":";
+  s = date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds();
+  return Y + M + D + h + m + s;
 }
 
 window.addEventListener("load", async () => {
