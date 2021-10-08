@@ -132,6 +132,7 @@ function bindEvents() {
   $(document).on("click", ".btn-oracle", NewSettlement);
   $(document).on("click", ".btn-harvestpremium", HarvestPremium);
   $(document).on("click", ".btn-harvestdegis", HarvestDegis);
+  $(document).on("click", ".btn-showuserpolicy", ShowUserPolicy);
 }
 
 async function fetchAccountData() {
@@ -432,7 +433,7 @@ async function GetPoolInfo() {
   );
 
   await MockUSD.allowance(selectedAccount, Address.InsurancePool, {
-    from: App.account,
+    from: selectedAccount,
   }).then((value) =>
     console.log("USDC allowance of the pool:", parseInt(value) / 10 ** 18)
   );
@@ -442,6 +443,8 @@ async function GetPoolInfo() {
 
   const pf_add = await InsurancePool.policyFlow.call();
   console.log("policy flow in the pool:", pf_add);
+
+  await GetAllPolicyInfo();
 }
 
 async function GetLPInfo() {
@@ -602,10 +605,52 @@ async function HarvestPremium() {
 
 async function HarvestDegis() {
   const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
-  const tx = await InsurancePool.harvestDegis(selectedAccount, {
+  const tx = await InsurancePool.harvestDegisReward(selectedAccount, {
     from: selectedAccount,
   });
   console.log("Tx Hash:", tx.tx);
+}
+
+async function ShowUserPolicy() {
+  const PolicyFlow = await contracts.PolicyFlow.at(Address.PolicyFlow);
+  console.log("PolicyFlow address:", PolicyFlow.address);
+
+  const policycount = await PolicyFlow.getUserPolicyCount(selectedAccount, {
+    from: selectedAccount,
+  });
+  console.log("Your policy amount:", policycount.toString());
+
+  let policyinfo = document.getElementById("policyinfo");
+  policyinfo.innerText = "Pool Info";
+
+  policyinfo.innerText += "\nYour policy amount: " + policycount.toString();
+
+  const userpolicy = await PolicyFlow.viewPolicy(selectedAccount, {
+    from: selectedAccount,
+  });
+  console.log(userpolicy);
+  policyinfo.innerText += "\n Your policy info: " + userpolicy;
+}
+
+async function GetAllPolicyInfo() {
+  const PolicyFlow = await contracts.PolicyFlow.at(Address.PolicyFlow);
+
+  const total_policy = await PolicyFlow.Total_Policies.call({
+    from: selectedAccount,
+  });
+  console.log("Total policy amount in the pool:", parseInt(total_policy));
+  for (let i = 0; i < parseInt(total_policy); i++) {
+    await PolicyFlow.getPolicyIdByCount(i, { from: selectedAccount }).then(
+      (value) => {
+        console.log("policyId", i, ":", value);
+      }
+    );
+    await PolicyFlow.getPolicyInfoByCount(i, { from: selectedAccount }).then(
+      (value) => {
+        console.log(value);
+      }
+    );
+  }
 }
 
 function timestampToTime(timestamp) {
