@@ -10,6 +10,10 @@ let selectedAccount;
 let contracts = {};
 let Address = {};
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function ifConnected() {
   if (provider == null) {
     alert("Please connect wallet");
@@ -92,6 +96,10 @@ async function initContract() {
     contracts.MockUSD = TruffleContract(data);
     contracts.MockUSD.setProvider(provider);
   });
+  $.getJSON("../abis/LinkTokenInterface.json", function (data) {
+    contracts.LinkTokenInterface = TruffleContract(data);
+    contracts.LinkTokenInterface.setProvider(provider);
+  });
 }
 
 async function initContractAddress() {
@@ -118,8 +126,12 @@ function bindEvents() {
   $(document).on("click", ".btn-stake", Stake);
   $(document).on("click", ".btn-unstake", Unstake);
   $(document).on("click", ".btn-poolinfo", GetPoolInfo);
+  $(document).on("click", ".btn-lpinfo", GetLPInfo);
   $(document).on("click", ".btn-updatePolicyFlow", UpdatePolicyFlow);
   $(document).on("click", ".btn-newpolicy", NewPolicy);
+  $(document).on("click", ".btn-oracle", NewSettlement);
+  $(document).on("click", ".btn-harvestpremium", HarvestPremium);
+  $(document).on("click", ".btn-harvestdegis", HarvestDegis);
 }
 
 async function fetchAccountData() {
@@ -352,7 +364,7 @@ async function Unstake() {
   const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
   console.log("InsurancePoll Address:", InsurancePool.address);
 
-  deposit_amount = document.getElementById("stake_number").value;
+  deposit_amount = document.getElementById("stake_amount").value;
   f_amount = web3.utils.toWei(deposit_amount, "ether");
 
   const tx = await InsurancePool.unstake(
@@ -385,8 +397,7 @@ async function GetPoolInfo() {
         "Current Staking Balance in the pool:",
         parseInt(value) / 10 ** 18
       );
-      poolinfo.innerText +=
-        "\nCurrent Staking Value: " + value / 10 ** 18 + "\n";
+      poolinfo.innerText += "\nCurrent Staking Value: " + value / 10 ** 18;
     }
   );
 
@@ -396,7 +407,7 @@ async function GetPoolInfo() {
         "Available capacity in the pool:",
         parseInt(value) / 10 ** 18
       );
-      poolinfo.innerText += "Available Capacity: " + value / 10 ** 18 + "\n";
+      poolinfo.innerText += "\nAvailable Capacity: " + value / 10 ** 18;
     }
   );
 
@@ -406,7 +417,7 @@ async function GetPoolInfo() {
         "Total locked amount in the pool:",
         parseInt(value) / 10 ** 18
       );
-      poolinfo.innerText += "Total Locked: " + value / 10 ** 18 + "\n";
+      poolinfo.innerText += "\nTotal Locked: " + value / 10 ** 18;
     }
   );
 
@@ -431,6 +442,58 @@ async function GetPoolInfo() {
 
   const pf_add = await InsurancePool.policyFlow.call();
   console.log("policy flow in the pool:", pf_add);
+}
+
+async function GetLPInfo() {
+  ifConnected();
+
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+  const LPToken = await contracts.LPToken.at(Address.LPToken);
+
+  let lpinfo = document.getElementById("poolinfo");
+  lpinfo.innerText = "LP Info";
+
+  await InsurancePool.getStakeAmount(selectedAccount, {
+    from: selectedAccount,
+  }).then((value) => {
+    console.log("Your stake amount:", parseInt(value) / 10 ** 18);
+    lpinfo.innerText += "\nStake amount: " + parseInt(value) / 10 ** 18;
+  });
+
+  await InsurancePool.getUnlockedfor(selectedAccount, {
+    from: selectedAccount,
+  }).then((value) => {
+    console.log("Your unlocked amount:", parseInt(value) / 10 ** 18);
+    lpinfo.innerText += "\nUnlocked amount: " + parseInt(value) / 10 ** 18;
+  });
+
+  await InsurancePool.getLockedfor(selectedAccount, {
+    from: selectedAccount,
+  }).then((value) => {
+    console.log("Your locked amount:", parseInt(value) / 10 ** 18);
+    lpinfo.innerText += "\nLocked amount: " + parseInt(value) / 10 ** 18;
+  });
+
+  await InsurancePool.getRealBalance(selectedAccount, {
+    from: selectedAccount,
+  }).then((value) => {
+    console.log("Your real balance:", parseInt(value) / 10 ** 18);
+    lpinfo.innerText += "\nReal balance: " + parseInt(value) / 10 ** 18;
+  });
+
+  const lpvalue = await InsurancePool.LPValue.call({ from: selectedAccount });
+  const lpnum = await LPToken.balanceOf(selectedAccount);
+  lpinfo.innerText += "\nLP Value: " + parseInt(lpvalue) / 10 ** 18;
+  lpinfo.innerText += "\nLP Number: " + parseInt(lpnum) / 10 ** 18;
+
+  const pendingDegis = await InsurancePool.pendingDegis(selectedAccount);
+  console.log("Pending degis:", parseInt(pendingDegis) / 10 ** 18);
+  lpinfo.innerText += "\nPending degis:  " + parseInt(pendingDegis) / 10 ** 18;
+
+  const pendingPremium = await InsurancePool.pendingPremium(selectedAccount);
+  console.log("Pending premium:", parseInt(pendingPremium) / 10 ** 18);
+  lpinfo.innerText +=
+    "\nPending premium:  " + parseInt(pendingPremium) / 10 ** 18;
 }
 
 async function MintNFT() {
@@ -483,6 +546,66 @@ async function NewPolicy() {
   console.log("Tx Hash:", tx2.tx);
   console.log(tx2);
   console.log("policy Id:", tx2.logs[0].args[0]);
+}
+
+async function NewSettlement() {
+  ifConnected();
+
+  const PolicyFlow = await contracts.PolicyFlow.at(Address.PolicyFlow);
+  console.log("policy flow address:", ps.address);
+
+  flight_number = document.getElementById("flightNumber").value;
+  console.log("flight number is:", flight_number);
+
+  policy_order = document.getElementById("policyOrder").value;
+  console.log("policy order is:", policy_order);
+
+  date = document.getElementById("date").value;
+  console.log("date is:", date);
+
+  // const linkAddress = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
+  const linkAddress = await PolicyFlow.getChainlinkToken();
+  console.log("link address:", linkAddress);
+  const linkToken = await contracts.LinkTokenInterface.at(linkAddress);
+
+  const payment = "1000000000000000000";
+  const tx1 = await linkToken.transfer(PolicyFlow.address, payment, {
+    from: App.account,
+  });
+  console.log(tx1.tx);
+
+  const req = await PolicyFlow.newClaimRequest(
+    policy_order,
+    flight_number,
+    date,
+    "data.0.depart_delay",
+    true,
+    { from: selectedAccount }
+  );
+  console.log(req);
+
+  let flightStatus = await PolicyFlow.getResponse();
+
+  console.log("flightStatus:", flightStatus);
+  await sleep(60000);
+  flightStatus = await PolicyFlow.getResponse();
+  console.log("flightStatus:", flightStatus);
+}
+
+async function HarvestPremium() {
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+  const tx = await InsurancePool.harvestPremium(selectedAccount, {
+    from: selectedAccount,
+  });
+  console.log("Tx Hash:", tx.tx);
+}
+
+async function HarvestDegis() {
+  const InsurancePool = await contracts.InsurancePool.at(Address.InsurancePool);
+  const tx = await InsurancePool.harvestDegis(selectedAccount, {
+    from: selectedAccount,
+  });
+  console.log("Tx Hash:", tx.tx);
 }
 
 function timestampToTime(timestamp) {
