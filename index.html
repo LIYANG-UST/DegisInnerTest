@@ -128,6 +128,15 @@
           <button type="button" class="btn btn-primary btn-mintNFT">
             Mint NFT Token Test
           </button>
+          <button type="button" class="btn btn-primary btn-setLottery">
+            Set Up Lottery
+          </button>
+          <button type="button" class="btn btn-primary btn-settleLottery">
+            Settle Lottery
+          </button>
+          <button type="button" class="btn btn-primary btn-injectLottery">
+            Inject Funds
+          </button>
         </div>
       </div>
     </div>
@@ -246,13 +255,17 @@
     <!-- Lottery Part -->
     <div class="container" id="lotteryPart" style="margin-bottom: 20px">
       <div class="card">
-        <div class="card-header">Lottery</div>
+        <div class="card-header">
+          Lottery (You need to get some Degis Tokens first)
+        </div>
         <div class="card-body">
           <form>
             <div class="form-group">
               <label for="lotteryNumber">Select Your Number</label>
               <input class="form-control" type="text" id="lotteryNumber" />
-              <small class="form-text text-muted">4 Digits</small>
+              <small class="form-text text-muted"
+                >4 Digits; This process will have 2 transactions</small
+              >
             </div>
 
             <button type="button" class="btn btn-primary btn-buyticket">
@@ -260,6 +273,12 @@
             </button>
             <button type="button" class="btn btn-primary btn-redeemticket">
               Redeem a Ticket
+            </button>
+            <button type="button" class="btn btn-primary btn-lotteryinfo">
+              Get Lottery Info
+            </button>
+            <button type="button" class="btn btn-primary btn-claimAll">
+              Claim All Your Tickets
             </button>
           </form>
           <div style="margin-top: 10px">

@@ -104,6 +104,10 @@ async function initContract() {
     contracts.DegisLottery = TruffleContract(data);
     contracts.DegisLottery.setProvider(provider);
   });
+  $.getJSON("../abis/RandomNumberGenerator.json", function (data) {
+    contracts.RandomNumberGenerator = TruffleContract(data);
+    contracts.RandomNumberGenerator.setProvider(provider);
+  });
 }
 
 async function initContractAddress() {
@@ -120,6 +124,7 @@ async function initContractAddress() {
     Address.EmergencyPool = data.EmergencyPool;
     Address.GetRandomness = data.GetRandomness;
     Address.DegisLottery = data.DegisLottery;
+    Address.RandomNumberGenerator = data.RandomNumberGenerator;
   });
 }
 
@@ -138,7 +143,12 @@ function bindEvents() {
   $(document).on("click", ".btn-harvestpremium", HarvestPremium);
   $(document).on("click", ".btn-harvestdegis", HarvestDegis);
   $(document).on("click", ".btn-showuserpolicy", ShowUserPolicy);
+  $(document).on("click", ".btn-setLottery", StartLottery);
+  $(document).on("click", ".btn-settleLottery", SettleLottery);
   $(document).on("click", ".btn-buyticket", BuyTicket);
+  $(document).on("click", ".btn-lotteryinfo", ShowLotteryInfo);
+  $(document).on("click", ".btn-injectLottery", InjectFunds);
+  $(document).on("click", ".btn-claimAll", ClaimAllTickets);
 }
 
 async function fetchAccountData() {
@@ -529,7 +539,7 @@ async function NewPolicy() {
   );
   let timestamp = new Date().getTime();
 
-  timestamp1 = timestamp + 86400 + 100; // 买24小时后的航班
+  timestamp1 = timestamp / 1000 + 86400 + 100; // 买24小时后的航班
   timestamp2 = timestamp1 + 300; // 飞行时间5min
   console.log("departure timestamp:", timestamp1);
   console.log("departure time:", timestampToTime(timestamp1));
@@ -656,6 +666,211 @@ async function GetAllPolicyInfo() {
         console.log(value);
       }
     );
+  }
+}
+
+async function StartLottery() {
+  ifConnected();
+
+  const Lottery = await contracts.DegisLottery.at(Address.DegisLottery);
+  const linkToken = await contracts.LinkTokenInterface.at(
+    Address.LinkTokenInterface
+  );
+  const RandomGenerator = await contracts.RandomNumberGenerator.at(
+    Address.RandomNumberGenerator
+  );
+
+  amount = web3.utils.toWei("1", "ether");
+
+  let LotteryInR = await RandomGenerator.DegisLottery.call({
+    from: selectedAccount,
+  });
+  if (LotteryInR == Address.DegisLottery) {
+    console.log("Already set the degis lottery address");
+  } else {
+    await RandomGenerator.setLotteryAddress(Address.DegisLottery, {
+      from: selectedAccount,
+    });
+  }
+
+  let lotteryLinkBalance = await linkToken.balanceOf(RandomGenerator.address);
+  if (lotteryLinkBalance >= 1)
+    console.log(
+      "Enough LINK TOKEN for RandomGenerator:",
+      parseInt(lotteryLinkBalance) / 10 ** 18
+    );
+  else {
+    await linkToken.transfer(RandomGenerator.address, amount, {
+      from: selectedAccount,
+    });
+    lotteryLinkBalance = await linkToken.balanceOf(RandomGenerator.address);
+    console.log(
+      "[INFO]:",
+      "CONTRACT(RANDOM) LINK BALANCE",
+      web3.utils.fromWei(lotteryLinkBalance.toString())
+    );
+  }
+
+  let injector = await Lottery.injectorAddress.call({ from: selectedAccount });
+  console.log("Injector:", injector);
+  if (injector == Address.InsurancePool) {
+    console.log("Already Set Up Injector");
+  } else {
+    const pre_tx = await Lottery.setOperatorAndTreasuryAndInjectorAddresses(
+      selectedAccount,
+      selectedAccount,
+      Address.InsurancePool,
+      { from: selectedAccount }
+    );
+  }
+
+  const currentLotteryId = await Lottery.viewCurrentLotteryId({
+    from: selectedAccount,
+  });
+  const lotteryDetails = await Lottery.viewLottery(currentLotteryId);
+  if (lotteryDetails.status != 3) {
+    alert("This round of lottery has not been claimable");
+  } else {
+    let timestamp = new Date().getTime();
+    console.log("current time:", timestampToTime(timestamp));
+    timestamp = parseInt(timestamp / 1000 + 86400 * 3); // 3days
+    console.log("end time:", timestampToTime(timestamp));
+
+    const tx1 = await Lottery.startLottery(
+      timestamp,
+      web3.utils.toBN(10e18),
+      [500, 1500, 2000, 6000],
+      0,
+      { from: selectedAccount }
+    );
+  }
+}
+
+async function ShowLotteryInfo() {
+  ifConnected();
+
+  const Lottery = await contracts.DegisLottery.at(Address.DegisLottery);
+  let lotteryInfo = document.getElementById("lotteryInfo");
+  lotteryInfo.innerText = "Lottery Info";
+
+  const currentLotteryId = await Lottery.viewCurrentLotteryId({
+    from: selectedAccount,
+  });
+  lotteryInfo.innerText += "\nCurrent Lottery Round: " + currentLotteryId;
+
+  const lotteryDetails = await Lottery.viewLottery(currentLotteryId);
+  lotteryInfo.innerText +=
+    "\nStart Time: " + timestampToTime(lotteryDetails.startTime * 1000);
+  lotteryInfo.innerText +=
+    "\nStart Time: " + timestampToTime(lotteryDetails.endTime * 1000);
+  lotteryInfo.innerText += "\nCurrent Lottery Status: " + lotteryDetails.status;
+  lotteryInfo.innerText += " (0:Pending, 1:Open, 2:Close, 3:Claimable)";
+  lotteryInfo.innerText +=
+    "\nCurrent Lottery Amount: " + lotteryDetails.amountCollected / 1e18;
+
+  if (lotteryDetails.status == 3) {
+    const userAward = await Lottery.viewClaimAllTickets(currentLotteryId, {
+      from: selectedAccount,
+    });
+    lotteryInfo.innerText +=
+      "\nYour Award in Round" +
+      currentLotteryId +
+      ": " +
+      web3.utils.fromWei(userAward.toString());
+  } else {
+    console.log("this round has not been claimable");
+  }
+}
+
+async function InjectFunds() {
+  ifConnected();
+  const Lottery = await contracts.DegisLottery.at(Address.DegisLottery);
+  const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
+
+  const currentLotteryId = await Lottery.viewCurrentLotteryId();
+  const amount = web3.utils.toWei("1000", "ether");
+
+  const tx1 = await MockUSD.approve(Address.DegisLottery, amount, {
+    from: selectedAccount,
+  });
+  console.log("Tx Hash:", tx1.tx);
+
+  const tx2 = await Lottery.injectFunds(currentLotteryId, amount, {
+    from: selectedAccount,
+  });
+  console.log("Tx Hash:", tx2.tx);
+}
+
+async function SettleLottery() {
+  ifConnected();
+
+  const Lottery = await contracts.DegisLottery.at(Address.DegisLottery);
+
+  const currentLotteryId = await Lottery.viewCurrentLotteryId();
+  const lotteryDetails = await Lottery.viewLottery(currentLotteryId);
+
+  if (lotteryDetails.status == 2) {
+    alert("Already closed");
+  } else {
+    const tx1 = await Lottery.closeLottery(currentLotteryId, {
+      from: selectedAccount,
+    });
+    console.log("Tx Hash:", tx1.tx);
+  }
+
+  if (lotteryDetails.status == 3) {
+    alert("Already Claimable");
+  } else {
+    const tx2 = await Lottery.drawFinalNumberAndMakeLotteryClaimable(
+      currentLotteryId,
+      1,
+      { from: selectedAccount }
+    );
+    console.log("Tx Hash:", tx2.tx);
+  }
+}
+
+async function ClaimAllTickets() {
+  ifConnected();
+
+  const Lottery = await contracts.DegisLottery.at(Address.DegisLottery);
+
+  const currentLotteryId = await Lottery.viewCurrentLotteryId();
+  const lotteryDetails = await Lottery.viewLottery(currentLotteryId);
+  if (lotteryDetails.status == 3) {
+    const tx = await Lottery.claimAllTickets(currentLotteryId, {
+      from: selectedAccount,
+    });
+    console.log("Tx Hash:", tx.tx);
+  } else {
+    alert("current round not claimable now");
+  }
+}
+
+async function BuyTicket() {
+  ifConnected();
+  const Lottery = await contracts.DegisLottery.at(Address.DegisLottery);
+  const Degis = await contracts.DegisToken.at(Address.DegisToken);
+
+  let lotteryNumber = document.getElementById("lotteryNumber").value;
+
+  if (parseInt(lotteryNumber) < 10000 && parseInt(lotteryNumber) > 0) {
+    let tickets = new Array();
+    tickets[0] = parseInt(lotteryNumber) + 10000;
+    console.log(tickets);
+    let cost = tickets.length * 10;
+
+    await Degis.approve(
+      Address.DegisLottery,
+      web3.utils.toWei(cost.toString(), "ether"),
+      { from: selectedAccount }
+    );
+
+    await Lottery.buyTickets(tickets, {
+      from: selectedAccount,
+    });
+  } else {
+    alert("Please enter 4 digits");
   }
 }
 
