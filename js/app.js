@@ -100,6 +100,10 @@ async function initContract() {
     contracts.LinkTokenInterface = TruffleContract(data);
     contracts.LinkTokenInterface.setProvider(provider);
   });
+  $.getJSON("../abis/DegisLottery.json", function (data) {
+    contracts.DegisLottery = TruffleContract(data);
+    contracts.DegisLottery.setProvider(provider);
+  });
 }
 
 async function initContractAddress() {
@@ -115,6 +119,7 @@ async function initContractAddress() {
     Address.LinkTokenInterface = data.LinkTokenInterface;
     Address.EmergencyPool = data.EmergencyPool;
     Address.GetRandomness = data.GetRandomness;
+    Address.DegisLottery = data.DegisLottery;
   });
 }
 
@@ -133,6 +138,7 @@ function bindEvents() {
   $(document).on("click", ".btn-harvestpremium", HarvestPremium);
   $(document).on("click", ".btn-harvestdegis", HarvestDegis);
   $(document).on("click", ".btn-showuserpolicy", ShowUserPolicy);
+  $(document).on("click", ".btn-buyticket", BuyTicket);
 }
 
 async function fetchAccountData() {
