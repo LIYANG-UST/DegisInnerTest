@@ -328,6 +328,16 @@ async function CheckUSDBalance() {
     "Your MockUSD Balance: " + usd_balance / 10 ** 18;
 }
 
+async function CheckDegisBalance() {
+  ifConnected();
+  const DegisToken = await contracts.DegisToken.at(Address.DegisToken);
+  console.log("Degis Token Address:", DegisToken.address);
+
+  let degis_balance = await DegisToken.balanceOf(selectedAccount);
+  document.getElementById("poolinfo").innerText =
+    "Your Degis Balance: " + degis_balance / 10 ** 18;
+}
+
 async function Faucet() {
   ifConnected();
   const MockUSD = await contracts.MockUSD.at(Address.MockUSD);
