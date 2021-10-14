@@ -324,7 +324,8 @@ async function CheckUSDBalance() {
   console.log("MockUSD Address:", MockUSD.address);
 
   let usd_balance = await MockUSD.balanceOf(selectedAccount);
-  document.getElementById("usdbalance").innerText += usd_balance / 10 ** 18;
+  document.getElementById("usdbalance").innerText =
+    "Your MockUSD Balance: " + usd_balance / 10 ** 18;
 }
 
 async function Faucet() {
