@@ -146,6 +146,7 @@ function bindEvents() {
   $(document).on("click", ".btn-setLottery", StartLottery);
   $(document).on("click", ".btn-settleLottery", SettleLottery);
   $(document).on("click", ".btn-buyticket", BuyTicket);
+  $(document).on("click", ".btn-redeemticket", RedeemTicket);
   $(document).on("click", ".btn-lotteryinfo", ShowLotteryInfo);
   $(document).on("click", ".btn-injectLottery", InjectFunds);
   $(document).on("click", ".btn-claimAll", ClaimAllTickets);
@@ -776,7 +777,7 @@ async function ShowLotteryInfo() {
   lotteryInfo.innerText +=
     "\nStart Time: " + timestampToTime(lotteryDetails.startTime * 1000);
   lotteryInfo.innerText +=
-    "\nStart Time: " + timestampToTime(lotteryDetails.endTime * 1000);
+    "\nEnd Time: " + timestampToTime(lotteryDetails.endTime * 1000);
   lotteryInfo.innerText += "\nCurrent Lottery Status: " + lotteryDetails.status;
   lotteryInfo.innerText += " (0:Pending, 1:Open, 2:Close, 3:Claimable)";
   lotteryInfo.innerText +=
