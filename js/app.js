@@ -549,9 +549,10 @@ async function NewPolicy() {
     document.getElementById("payoff").value,
     "ether"
   );
+  console.log(premium);
   let timestamp = new Date().getTime();
 
-  timestamp1 = timestamp / 1000 + 86400 + 100; // 买24小时后的航班
+  timestamp1 = parseInt(timestamp / 1000) + 86400 + 100; // 买24小时后的航班
   timestamp2 = timestamp1 + 300; // 飞行时间5min
   console.log("departure timestamp:", timestamp1);
   console.log("departure time:", timestampToTime(timestamp1));
@@ -568,6 +569,7 @@ async function NewPolicy() {
   const tx2 = await PolicyFlow.newApplication(
     selectedAccount,
     0,
+    document.getElementById("userFlight").value.toString(),
     web3.utils.toBN(premium),
     web3.utils.toBN(payoff),
     timestamp1,
