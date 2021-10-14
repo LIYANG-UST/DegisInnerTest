@@ -317,7 +317,7 @@ async function UpdatePolicyFlow() {
   const tx2 = await PolicyToken.updatePolicyFlow(Address.PolicyFlow, {
     from: selectedAccount,
   });
-  console.log(tx2.tx);
+  console.log("Tx Hash:", tx2.tx);
 }
 
 async function CheckUSDBalance() {
@@ -743,7 +743,7 @@ async function StartLottery() {
     from: selectedAccount,
   });
   const lotteryDetails = await Lottery.viewLottery(currentLotteryId);
-  if (lotteryDetails.status != 3) {
+  if (lotteryDetails.status != 3 || lotteryDetails.status != 0) {
     alert("This round of lottery has not been claimable");
   } else {
     let timestamp = new Date().getTime();
@@ -888,6 +888,8 @@ async function BuyTicket() {
     alert("Please enter 4 digits");
   }
 }
+
+async function RedeemTicket() {}
 
 function timestampToTime(timestamp) {
   let date = new Date(timestamp);
