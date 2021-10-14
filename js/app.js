@@ -149,6 +149,7 @@ function bindEvents() {
   $(document).on("click", ".btn-lotteryinfo", ShowLotteryInfo);
   $(document).on("click", ".btn-injectLottery", InjectFunds);
   $(document).on("click", ".btn-claimAll", ClaimAllTickets);
+  $(document).on("click", ".btn-checkDegis", CheckDegisBalance);
 }
 
 async function fetchAccountData() {
