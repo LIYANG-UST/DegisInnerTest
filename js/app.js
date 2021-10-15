@@ -602,14 +602,8 @@ async function NewSettlement() {
   const PolicyFlow = await contracts.PolicyFlow.at(Address.PolicyFlow);
   console.log("policy flow address:", PolicyFlow.address);
 
-  flight_number = document.getElementById("flightNumber").value;
-  console.log("flight number is:", flight_number);
-
   policy_order = document.getElementById("policyOrder").value;
   console.log("policy order is:", policy_order);
-
-  date = document.getElementById("date").value;
-  console.log("date is:", date);
 
   // const linkAddress = "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
   const linkAddress = await PolicyFlow.getChainlinkToken();
@@ -622,10 +616,19 @@ async function NewSettlement() {
   });
   console.log(tx1.tx);
 
+  let flight_number;
+  let flight_numbers = document.getElementsByName("flightNumber_s");
+  for (i = 0; i < flight_numbers.length; i++) {
+    if (flight_numbers[i].checked) {
+      flight_number = flight_numbers[i].value;
+      timestamp1 = FlightNumber[i];
+    }
+  }
+
   const req = await PolicyFlow.newClaimRequest(
     policy_order,
     flight_number,
-    date,
+    timestamp1,
     "data.0.depart_delay",
     true,
     { from: selectedAccount }
@@ -808,6 +811,24 @@ async function ShowLotteryInfo() {
       web3.utils.fromWei(userAward.toString());
   } else {
     console.log("this round has not been claimable");
+  }
+
+  const userTicketInfo = await Lottery.viewUserInfoForLotteryId(
+    selectedAccount,
+    currentLotteryId,
+    0,
+    40,
+    { from: selectedAccount }
+  );
+  lotteryInfo.innerText += "\nYour Tickets: ";
+  for (i = 0; i < userTicketInfo[0].length; i++) {
+    console.log(parseInt(userTicketInfo[0][i]));
+    console.log(parseInt(userTicketInfo[1][i]));
+    lotteryInfo.innerText +=
+      parseInt(userTicketInfo[0][i]) +
+      "(" +
+      parseInt(userTicketInfo[1][i] - 10000) +
+      ")\n";
   }
 }
 
