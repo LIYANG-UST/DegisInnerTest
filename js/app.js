@@ -9,6 +9,7 @@ let web3;
 let selectedAccount;
 let contracts = {};
 let Address = {};
+let FlightNumber = [];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -125,6 +126,12 @@ async function initContractAddress() {
     Address.GetRandomness = data.GetRandomness;
     Address.DegisLottery = data.DegisLottery;
     Address.RandomNumberGenerator = data.RandomNumberGenerator;
+  });
+
+  $.getJSON("../flight.json", function (data) {
+    FlightNumber[0] = data.WN186;
+    FlightNumber[1] = data.AQ1299;
+    FlightNumber[2] = data.G42371;
   });
 }
 
@@ -550,13 +557,20 @@ async function NewPolicy() {
     document.getElementById("payoff").value,
     "ether"
   );
-  console.log(premium);
-  let timestamp = new Date().getTime();
 
-  timestamp1 = parseInt(timestamp / 1000) + 86400 + 100; // 买24小时后的航班
+  let flight_number;
+  let flight_numbers = document.getElementsByName("flightNumber");
+  for (i = 0; i < flight_numbers.length; i++) {
+    if (flight_numbers[i].checked) {
+      flight_number = flight_numbers[i].value;
+      timestamp1 = FlightNumber[i];
+    }
+  }
+
+  console.log(flight_number);
+
   timestamp2 = timestamp1 + 300; // 飞行时间5min
   console.log("departure timestamp:", timestamp1);
-  console.log("departure time:", timestampToTime(timestamp1));
 
   const tx1 = await MockUSD.approve(
     Address.InsurancePool,
@@ -570,7 +584,7 @@ async function NewPolicy() {
   const tx2 = await PolicyFlow.newApplication(
     selectedAccount,
     0,
-    document.getElementById("userFlight").value.toString(),
+    flight_number,
     web3.utils.toBN(premium),
     web3.utils.toBN(payoff),
     timestamp1,
@@ -586,7 +600,7 @@ async function NewSettlement() {
   ifConnected();
 
   const PolicyFlow = await contracts.PolicyFlow.at(Address.PolicyFlow);
-  console.log("policy flow address:", ps.address);
+  console.log("policy flow address:", PolicyFlow.address);
 
   flight_number = document.getElementById("flightNumber").value;
   console.log("flight number is:", flight_number);
@@ -604,7 +618,7 @@ async function NewSettlement() {
 
   const payment = "1000000000000000000";
   const tx1 = await linkToken.transfer(PolicyFlow.address, payment, {
-    from: App.account,
+    from: selectedAccount,
   });
   console.log(tx1.tx);
 
@@ -869,7 +883,7 @@ async function BuyTicket() {
 
   let lotteryNumber = document.getElementById("lotteryNumber").value;
 
-  if (parseInt(lotteryNumber) < 10000 && parseInt(lotteryNumber) > 0) {
+  if (parseInt(lotteryNumber) < 10000 && parseInt(lotteryNumber) >= 0) {
     let tickets = new Array();
     tickets[0] = parseInt(lotteryNumber) + 10000;
     console.log(tickets);
