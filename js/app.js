@@ -760,7 +760,7 @@ async function StartLottery() {
     from: selectedAccount,
   });
   const lotteryDetails = await Lottery.viewLottery(currentLotteryId);
-  if (lotteryDetails.status != 3 || lotteryDetails.status != 0) {
+  if (lotteryDetails.status != 3 && lotteryDetails.status != 0) {
     alert("This round of lottery has not been claimable");
   } else {
     let timestamp = new Date().getTime();
